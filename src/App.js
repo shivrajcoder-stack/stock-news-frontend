@@ -5,9 +5,8 @@ import axios from "axios";
 import { Search, TrendingUp, ExternalLink } from "lucide-react";
 
 // ALWAYS use the backend with /api prefix
-const API =
-  process.env.REACT_APP_BACKEND_URL ||
-  "https://stock-news-backend-e3h7.onrender.com/api";
+const API = window.__API_PREFIX__;
+
 
 // final tab order
 const SECTORS = [
