@@ -4,7 +4,7 @@ import axios from 'axios';
 import { Search, TrendingUp, ExternalLink } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+const API = "https://stock-news-backend-e3h7.onrender.com/api";
 
 function App() {
   const [activeTab, setActiveTab] = useState('ALL');
