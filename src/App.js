@@ -3,7 +3,6 @@ import './App.css';
 import axios from 'axios';
 import { Search, TrendingUp, ExternalLink } from 'lucide-react';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = "https://stock-news-backend-e3h7.onrender.com/api";
 
 function App() {
@@ -141,10 +140,11 @@ function App() {
   const newsItems = getCurrentNews();
 
   return (
-    <div className="app-container" data-testid="app-container">
+    <div className="app-container">
       <div className="app-wrapper">
-        {/* Header */}
-        <header className="header" data-testid="header">
+
+        {/* HEADER */}
+        <header className="header">
           <div className="header-content">
             <div className="logo-section">
               <TrendingUp className="logo-icon" size={32} />
@@ -154,8 +154,8 @@ function App() {
           </div>
         </header>
 
-        {/* Search Section */}
-        <div className="search-section" data-testid="search-section">
+        {/* SEARCH SECTION */}
+        <div className="search-section">
           <div className="search-container">
             <Search className="search-icon" size={20} />
             <input
@@ -164,29 +164,19 @@ function App() {
               placeholder="Search for a company... (e.g., Reliance, TCS, HDFC)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => searchQuery && setShowSuggestions(true)}
-              data-testid="search-input"
             />
             {searchQuery && (
-              <button
-                className="clear-btn"
-                onClick={handleClearSearch}
-                data-testid="clear-search-btn"
-              >
-                ×
-              </button>
+              <button className="clear-btn" onClick={handleClearSearch}>×</button>
             )}
           </div>
 
-          {/* Suggestions Dropdown */}
           {showSuggestions && suggestions.length > 0 && (
-            <div className="suggestions-dropdown" data-testid="suggestions-dropdown">
+            <div className="suggestions-dropdown">
               {suggestions.map((company, index) => (
                 <div
                   key={index}
                   className="suggestion-item"
                   onClick={() => handleCompanySelect(company)}
-                  data-testid={`suggestion-item-${index}`}
                 >
                   {company}
                 </div>
@@ -195,15 +185,14 @@ function App() {
           )}
         </div>
 
-        {/* Tabs */}
+        {/* TABS */}
         {!selectedCompany && (
-          <div className="tabs-container" data-testid="tabs-container">
+          <div className="tabs-container">
             {['ALL', 'FMCG', 'HEALTH'].map((tab) => (
               <button
                 key={tab}
                 className={`tab ${activeTab === tab ? 'active' : ''}`}
                 onClick={() => setActiveTab(tab)}
-                data-testid={`tab-${tab.toLowerCase()}`}
               >
                 {tab}
               </button>
@@ -211,59 +200,62 @@ function App() {
           </div>
         )}
 
-        {/* News Content */}
-        <div className="content-section" data-testid="content-section">
+        {/* NEWS LIST */}
+        <div className="content-section">
+
           {selectedCompany && (
-            <div className="company-header" data-testid="company-header">
+            <div className="company-header">
               <h2>{selectedCompany}</h2>
               <p>Latest news and updates</p>
             </div>
           )}
 
           {loading ? (
-            <div className="loading" data-testid="loading-indicator">Loading news...</div>
+            <div className="loading">Loading news...</div>
           ) : newsItems.length === 0 ? (
-            <div className="no-news" data-testid="no-news-message">
+            <div className="no-news">
               {selectedCompany 
-                ? 'No news available for this company at the moment.'
-                : 'No news available in this category. The background updater is fetching news from 4000+ companies. Please check back in a few minutes.'}
+                ? "No news available for this company."
+                : "Background updater is fetching news. Please check later."}
             </div>
           ) : (
-            <div className="news-list" data-testid="news-list">
+            <div className="news-list">
+              
               {newsItems.map((item, index) => (
-                <div key={index} className="news-card" data-testid={`news-card-${index}`}>
+                <div 
+                  key={index} 
+                  className={`news-card ${item.sentiment || "neutral"}`}
+                >
                   <div className="news-header">
                     <h3 className="news-title">{item.title}</h3>
                     {item.company && (
-                      <span className="company-badge" data-testid={`company-badge-${index}`}>
-                        {item.company}
-                      </span>
+                      <span className="company-badge">{item.company}</span>
                     )}
                   </div>
-                  
+
                   {item.description && (
                     <p className="news-description">{item.description}</p>
                   )}
-                  
+
                   <div className="news-footer">
                     <span className="news-date">{formatDate(item.pubDate)}</span>
-                    {item.link && (
-                      <a
-                        href={item.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="read-more-link"
-                        data-testid={`read-more-link-${index}`}
-                      >
-                        Read more <ExternalLink size={14} />
-                      </a>
-                    )}
+                    <a
+                      href={item.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="read-more-link"
+                    >
+                      Read more <ExternalLink size={14} />
+                    </a>
                   </div>
                 </div>
               ))}
+
             </div>
           )}
+
         </div>
+
       </div>
     </div>
   );
