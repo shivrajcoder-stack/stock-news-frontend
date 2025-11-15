@@ -1,25 +1,58 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import './App.css';
-import axios from 'axios';
-import { Search, TrendingUp, ExternalLink } from 'lucide-react';
+// App.js
+import React, { useState, useEffect, useCallback } from "react";
+import "./App.css";
+import axios from "axios";
+import { Search, TrendingUp, ExternalLink } from "lucide-react";
 
 const API = "https://stock-news-backend-e3h7.onrender.com/api";
 
+const SECTORS = [
+  { key: "ALL", label: "ALL" },
+  { key: "INDEX", label: "Index" },
+  { key: "FMCG", label: "FMCG" },
+  { key: "HEALTH", label: "Health" },
+  { key: "IT", label: "IT" },
+  { key: "BANKING", label: "Banking" },
+  { key: "AUTO", label: "Auto" },
+  { key: "METALS", label: "Metals" },
+  { key: "ENERGY", label: "Energy" },
+  { key: "PSU", label: "PSU" },
+  { key: "TELECOM", label: "Telecom" },
+  { key: "MIDCAP", label: "Midcap" },
+  { key: "SMALLCAP", label: "Smallcap" },
+  { key: "FINANCE", label: "Finance" },
+  { key: "PENNY", label: "Penny Stocks" }
+];
+
 function App() {
-  const [activeTab, setActiveTab] = useState('ALL');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [companyNews, setCompanyNews] = useState([]);
-  const [allNews, setAllNews] = useState([]);
-  const [fmcgNews, setFmcgNews] = useState([]);
-  const [healthNews, setHealthNews] = useState([]);
+  const [newsCache, setNewsCache] = useState({
+    ALL: [],
+    INDEX: [],
+    FMCG: [],
+    HEALTH: [],
+    IT: [],
+    BANKING: [],
+    AUTO: [],
+    METALS: [],
+    ENERGY: [],
+    PSU: [],
+    TELECOM: [],
+    MIDCAP: [],
+    SMALLCAP: [],
+    FINANCE: [],
+    PENNY: []
+  });
   const [loading, setLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  // Debounced search
+  // Debounce search suggestions
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const t = setTimeout(() => {
       if (searchQuery.trim().length > 0) {
         searchCompanies(searchQuery);
       } else {
@@ -27,19 +60,16 @@ function App() {
         setShowSuggestions(false);
       }
     }, 300);
-
-    return () => clearTimeout(timer);
+    return () => clearTimeout(t);
   }, [searchQuery]);
 
-  const searchCompanies = async (query) => {
+  const searchCompanies = async (q) => {
     try {
-      const response = await axios.get(`${API}/companies/search`, {
-        params: { q: query }
-      });
-      setSuggestions(response.data);
+      const res = await axios.get(`${API}/companies/search`, { params: { q } });
+      setSuggestions(res.data || []);
       setShowSuggestions(true);
-    } catch (error) {
-      console.error('Error searching companies:', error);
+    } catch (e) {
+      console.error("search error", e);
     }
   };
 
@@ -47,52 +77,47 @@ function App() {
     setSelectedCompany(companyName);
     setSearchQuery(companyName);
     setShowSuggestions(false);
-    setLoading(true);
 
+    // Use cached data only
+    setLoading(true);
     try {
-      const response = await axios.get(`${API}/news/company/${encodeURIComponent(companyName)}`);
-      setCompanyNews(response.data.news || []);
-    } catch (error) {
-      console.error('Error fetching company news:', error);
+      const res = await axios.get(`${API}/news/company/${encodeURIComponent(companyName)}`);
+      setCompanyNews(res.data.news || []);
+    } catch (e) {
+      console.error("company fetch error", e);
       setCompanyNews([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchTabNews = useCallback(async (tab) => {
-    setLoading(true);
-    try {
-      let endpoint = '';
-      switch(tab) {
-        case 'ALL':
-          endpoint = `${API}/news/all`;
-          break;
-        case 'FMCG':
-          endpoint = `${API}/news/sector/fmcg`;
-          break;
-        case 'HEALTH':
-          endpoint = `${API}/news/sector/health`;
-          break;
-        default:
-          endpoint = `${API}/news/all`;
-      }
+  // Fetch a sector only if not already in state (first load)
+  const fetchTabNews = useCallback(
+    async (tabKey) => {
+      // if already loaded, do nothing (instant)
+      if (newsCache[tabKey] && newsCache[tabKey].length > 0) return;
 
-      const response = await axios.get(endpoint);
-      
-      if (tab === 'ALL') {
-        setAllNews(response.data.news || []);
-      } else if (tab === 'FMCG') {
-        setFmcgNews(response.data.news || []);
-      } else if (tab === 'HEALTH') {
-        setHealthNews(response.data.news || []);
+      setLoading(true);
+      try {
+        let endpoint = `${API}/news/all`;
+        if (tabKey === "PENNY") endpoint = `${API}/news/sector/penny`;
+        else endpoint = `${API}/news/sector/${tabKey.toLowerCase()}`;
+
+        // For "ALL" use /news/all endpoint
+        if (tabKey === "ALL") endpoint = `${API}/news/all`;
+
+        const res = await axios.get(endpoint);
+        const items = res.data.news || [];
+
+        setNewsCache((prev) => ({ ...prev, [tabKey]: items }));
+      } catch (e) {
+        console.error("fetch tab error", e);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error(`Error fetching ${tab} news:`, error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [newsCache]
+  );
 
   useEffect(() => {
     if (!selectedCompany) {
@@ -100,41 +125,29 @@ function App() {
     }
   }, [activeTab, selectedCompany, fetchTabNews]);
 
-  const handleClearSearch = () => {
-    setSearchQuery('');
+  const clearSearch = () => {
+    setSearchQuery("");
     setSelectedCompany(null);
     setCompanyNews([]);
     setSuggestions([]);
     setShowSuggestions(false);
   };
 
-  const formatDate = (dateStr) => {
+  const formatDate = (d) => {
     try {
-      return new Date(dateStr).toLocaleDateString('en-IN', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
+      return new Date(d).toLocaleDateString("en-IN", {
+        year: "numeric",
+        month: "short",
+        day: "numeric"
       });
     } catch {
-      return dateStr;
+      return d;
     }
   };
 
   const getCurrentNews = () => {
-    if (selectedCompany) {
-      return companyNews;
-    }
-    
-    switch(activeTab) {
-      case 'ALL':
-        return allNews;
-      case 'FMCG':
-        return fmcgNews;
-      case 'HEALTH':
-        return healthNews;
-      default:
-        return [];
-    }
+    if (selectedCompany) return companyNews;
+    return newsCache[activeTab] || [];
   };
 
   const newsItems = getCurrentNews();
@@ -142,120 +155,98 @@ function App() {
   return (
     <div className="app-container">
       <div className="app-wrapper">
-
-        {/* HEADER */}
         <header className="header">
           <div className="header-content">
             <div className="logo-section">
               <TrendingUp className="logo-icon" size={32} />
               <h1 className="logo-text">Indian Stock Market News</h1>
             </div>
-            <p className="subtitle">Real-time market news from 4000+ Indian companies</p>
+            <p className="subtitle">Real-time market news (cache-first)</p>
           </div>
         </header>
 
-        {/* SEARCH SECTION */}
         <div className="search-section">
           <div className="search-container">
             <Search className="search-icon" size={20} />
             <input
-              type="text"
-              className="search-input"
-              placeholder="Search for a company... (e.g., Reliance, TCS, HDFC)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => searchQuery && setShowSuggestions(true)}
+              placeholder="Search company (Reliance, TCS, HDFC...)"
+              className="search-input"
             />
-            {searchQuery && (
-              <button className="clear-btn" onClick={handleClearSearch}>×</button>
-            )}
+            {searchQuery && <button className="clear-btn" onClick={clearSearch}>×</button>}
           </div>
 
           {showSuggestions && suggestions.length > 0 && (
             <div className="suggestions-dropdown">
-              {suggestions.map((company, index) => (
-                <div
-                  key={index}
-                  className="suggestion-item"
-                  onClick={() => handleCompanySelect(company)}
-                >
-                  {company}
+              {suggestions.map((s, i) => (
+                <div className="suggestion-item" key={i} onClick={() => handleCompanySelect(s)}>
+                  {s}
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        {/* TABS */}
+        {/* Tabs horizontal */}
         {!selectedCompany && (
           <div className="tabs-container">
-            {['ALL', 'FMCG', 'HEALTH'].map((tab) => (
-              <button
-                key={tab}
-                className={`tab ${activeTab === tab ? 'active' : ''}`}
-                onClick={() => setActiveTab(tab)}
-              >
-                {tab}
-              </button>
-            ))}
+            <div className="tabs-scroll">
+              {SECTORS.map((s) => (
+                <button
+                  key={s.key}
+                  className={`tab ${activeTab === s.key ? "active" : ""}`}
+                  onClick={() => setActiveTab(s.key)}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
-        {/* NEWS LIST */}
         <div className="content-section">
-
           {selectedCompany && (
             <div className="company-header">
               <h2>{selectedCompany}</h2>
-              <p>Latest news and updates</p>
+              <p>Latest news & updates</p>
             </div>
           )}
 
           {loading ? (
-            <div className="loading">Loading news...</div>
+            <div className="loading">Loading...</div>
           ) : newsItems.length === 0 ? (
             <div className="no-news">
-              {selectedCompany 
-                ? "No news available for this company."
-                : "Background updater is fetching news. Please check later."}
+              {selectedCompany
+                ? "No news available for this company at the moment."
+                : "No news in this section yet. Background updater is fetching."}
             </div>
           ) : (
             <div className="news-list">
-              
-              {newsItems.map((item, index) => (
-                <div 
-                  key={index} 
-                  className={`news-card ${item.sentiment || "neutral"}`}
-                >
-                  <div className="news-header">
-                    <h3 className="news-title">{item.title}</h3>
-                    {item.company && (
-                      <span className="company-badge">{item.company}</span>
-                    )}
+              {newsItems.map((item, idx) => {
+                const sentiment = (item.sentiment || "neutral").toLowerCase();
+                return (
+                  <div key={idx} className={`news-card ${sentiment}`}>
+                    <div className="news-header">
+                      <h3 className="news-title">{item.title}</h3>
+                      {item.company && <span className="company-badge">{item.company}</span>}
+                    </div>
+                    {item.description && <p className="news-description">{item.description}</p>}
+                    <div className="news-footer">
+                      <span className="news-date">{formatDate(item.pubDate)}</span>
+                      {item.link && (
+                        <a href={item.link} target="_blank" rel="noopener noreferrer" className="read-more">
+                          Read more <ExternalLink size={14} />
+                        </a>
+                      )}
+                    </div>
                   </div>
-
-                  {item.description && (
-                    <p className="news-description">{item.description}</p>
-                  )}
-
-                  <div className="news-footer">
-                    <span className="news-date">{formatDate(item.pubDate)}</span>
-                    <a
-                      href={item.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="read-more-link"
-                    >
-                      Read more <ExternalLink size={14} />
-                    </a>
-                  </div>
-                </div>
-              ))}
-
+                );
+              })}
             </div>
           )}
-
         </div>
-
       </div>
     </div>
   );
