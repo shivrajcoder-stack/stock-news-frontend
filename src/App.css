@@ -392,3 +392,16 @@ body {
     align-self: flex-start;
   }
 }
+
+.news-card.good {
+  background-color: #d5f8d5;
+}
+
+.news-card.bad {
+  background-color: #ffd6d6;
+}
+
+.news-card.neutral {
+  background-color: white;
+}
+
