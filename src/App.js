@@ -5,7 +5,7 @@ import axios from "axios";
 import { Search, TrendingUp, ExternalLink } from "lucide-react";
 
 // 🔥 ALWAYS correct backend base URL
-const API = process.env.REACT_APP_BACKEND_URL || "https://stock-news-backend-e3h7.onrender.com/api";
+const API = "https://stock-news-backend-e3h7.onrender.com/api";
 
 
 // 🔒 Locked tab order
