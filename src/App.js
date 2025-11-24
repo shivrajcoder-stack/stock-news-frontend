@@ -206,7 +206,7 @@ function App() {
       try {
         let endpoint =
           tabKey === "ALL"
-            ? `${API}/news/all?include_indexes=true`
+            ? `${API}/news/all?same_day=true&include_indexes=true`
             : tabKey === "RESULTS"
             ? `${API}/news/results`
             : tabKey === "PENNY"
@@ -309,7 +309,9 @@ function App() {
               {SECTORS.map((tab) => (
                 <button
                   key={tab.key}
-                  className={`tab ${activeTab === tab.key ? "active" : ""}`}
+                  className={`tab ${
+                    activeTab === tab.key ? "active" : ""
+                  }`}
                   onClick={() => setActiveTab(tab.key)}
                 >
                   {tab.label}
@@ -330,6 +332,7 @@ function App() {
             </div>
           ) : sections ? (
             <div className="news-list">
+
               {sections.indexes?.length > 0 && (
                 <>
                   <SectionHeader title="Index & Market-wide News" />
@@ -356,6 +359,7 @@ function App() {
                   ))}
                 </>
               )}
+
             </div>
           ) : (
             <div className="news-list">
