@@ -10,9 +10,7 @@ import {
   XCircle,
 } from "lucide-react";
 
-// ----------------------------------------------------------------------
-// FIX APPLIED HERE: Guarantee the API URL includes '/api'
-// ----------------------------------------------------------------------
+// Ensure API includes '/api'
 const BACKEND_BASE_URL =
   process.env.REACT_APP_BACKEND_URL ||
   "https://stock-news-backend-e3h7.onrender.com";
@@ -20,7 +18,6 @@ const BACKEND_BASE_URL =
 const API = BACKEND_BASE_URL.endsWith("/api")
   ? BACKEND_BASE_URL
   : `${BACKEND_BASE_URL}/api`;
-// ----------------------------------------------------------------------
 
 const SECTORS = [
   { key: "ALL", label: "ALL" },
@@ -50,9 +47,6 @@ function timeAgo(dateStr) {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-/**
- * Map a raw sentiment string to 'good' | 'bad' | 'neutral'
- */
 function mapSentiment(s) {
   if (!s) return "neutral";
   const x = s.toString().toLowerCase();
@@ -63,9 +57,6 @@ function mapSentiment(s) {
   return "neutral";
 }
 
-/**
- * NewsCard component (kept here to match your single-file structure)
- */
 function NewsCard({ item }) {
   const sentiment = mapSentiment(item.sentiment || item.tag || "");
   const sector =
@@ -74,20 +65,20 @@ function NewsCard({ item }) {
     (item.tags && item.tags.length ? item.tags[0] : "") ||
     "GENERAL";
 
-  // truncate description to ~3-4 lines (client-side)
   const description =
     item.description ||
     item.summary ||
     (item.content ? item.content.slice(0, 280) : "") ||
     "";
 
-  const leftIcon = sentiment === "good" ? (
-    <TrendingUp size={18} />
-  ) : sentiment === "bad" ? (
-    <TrendingDown size={18} />
-  ) : (
-    <TrendingUp size={18} />
-  );
+  const leftIcon =
+    sentiment === "good" ? (
+      <TrendingUp size={18} />
+    ) : sentiment === "bad" ? (
+      <TrendingDown size={18} />
+    ) : (
+      <TrendingUp size={18} />
+    );
 
   return (
     <div className={`news-card ${sentiment}`}>
@@ -121,9 +112,7 @@ function NewsCard({ item }) {
             </div>
           </div>
 
-          {description && (
-            <p className="news-description">{description}</p>
-          )}
+          {description && <p className="news-description">{description}</p>}
 
           <div className="news-footer">
             <div className="footer-left">
@@ -161,9 +150,6 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  // ------------------------------
-  // SEARCH
-  // ------------------------------
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchQuery.trim()) {
@@ -181,4 +167,177 @@ function App() {
     try {
       const res = await axios.get(`${API}/companies/search`, { params: { q } });
       setSuggestions(res.data || []);
-      setShowSuggestions(true
+      setShowSuggestions(true);
+    } catch (err) {
+      console.error("search error", err);
+    }
+  };
+
+  const handleCompanySelect = async (company) => {
+    setSelectedCompany(company);
+    setSearchQuery(company);
+    setShowSuggestions(false);
+    setLoading(true);
+
+    try {
+      const res = await axios.get(
+        `${API}/news/company/${encodeURIComponent(company)}`
+      );
+      setCompanyNews(res.data.news || []);
+    } catch (err) {
+      console.error("company fetch error", err);
+      setCompanyNews([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchTabNews = useCallback(
+    async (tabKey) => {
+      if (newsCache[tabKey]?.length > 0) return;
+
+      setLoading(true);
+      try {
+        let endpoint = `${API}/news/all`;
+
+        if (tabKey === "RESULTS") endpoint = `${API}/news/results`;
+        else if (tabKey === "PENNY") endpoint = `${API}/news/sector/penny`;
+        else if (tabKey === "LARGE CAP")
+          endpoint = `${API}/news/sector/largecap`;
+        else if (tabKey !== "ALL")
+          endpoint = `${API}/news/sector/${tabKey.toLowerCase()}`;
+
+        const res = await axios.get(endpoint);
+        setNewsCache((prev) => ({ ...prev, [tabKey]: res.data.news || [] }));
+      } catch (err) {
+        console.error("fetch tab error", err);
+        setNewsCache((prev) => ({ ...prev, [tabKey]: [] }));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [newsCache]
+  );
+
+  useEffect(() => {
+    if (!selectedCompany) fetchTabNews(activeTab);
+  }, [activeTab, selectedCompany, fetchTabNews]);
+
+  const refreshActiveTab = async () => {
+    setLoading(true);
+
+    try {
+      let endpoint = `${API}/news/all`;
+
+      if (activeTab === "RESULTS") endpoint = `${API}/news/results`;
+      else if (activeTab === "PENNY") endpoint = `${API}/news/sector/penny`;
+      else if (activeTab === "LARGE CAP")
+        endpoint = `${API}/news/sector/largecap`;
+      else if (activeTab !== "ALL")
+        endpoint = `${API}/news/sector/${activeTab.toLowerCase()}`;
+
+      const res = await axios.get(endpoint);
+      setNewsCache((prev) => ({ ...prev, [activeTab]: res.data.news || [] }));
+    } catch (err) {
+      console.error("refresh error", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const clearSearch = () => {
+    setSearchQuery("");
+    setSelectedCompany(null);
+    setCompanyNews([]);
+    setSuggestions([]);
+    setShowSuggestions(false);
+  };
+
+  const getCurrentNews = () =>
+    selectedCompany ? companyNews : newsCache[activeTab] || [];
+
+  const newsItems = getCurrentNews();
+
+  return (
+    <div className="app-container">
+      <div className="app-wrapper">
+        <header className="header">
+          <div className="logo-section">
+            <TrendingUp className="logo-icon" size={32} />
+            <h1 className="logo-text">Indian Stock Market News</h1>
+          </div>
+          <p className="subtitle">Real-time · Impact-first · Fast</p>
+        </header>
+
+        <div className="search-section">
+          <div className="search-container">
+            <Search className="search-icon" size={20} />
+
+            <input
+              className="search-input"
+              placeholder="Search for a company..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => searchQuery && setShowSuggestions(true)}
+            />
+
+            {searchQuery && (
+              <button className="clear-btn" onClick={clearSearch}>
+                ×
+              </button>
+            )}
+          </div>
+
+          {showSuggestions && suggestions.length > 0 && (
+            <div className="suggestions-dropdown">
+              {suggestions.map((c, i) => (
+                <div
+                  key={i}
+                  className="suggestion-item"
+                  onClick={() => handleCompanySelect(c)}
+                >
+                  {c}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {!selectedCompany && (
+          <div className="tabs-container">
+            <div className="tabs-scroll">
+              {SECTORS.map((tab) => (
+                <button
+                  key={tab.key}
+                  className={`tab ${activeTab === tab.key ? "active" : ""}`}
+                  onClick={() => setActiveTab(tab.key)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+              <button className="tab refresh-tab" onClick={refreshActiveTab}>
+                Refresh
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="content-section">
+          {loading ? (
+            <div className="loading">Loading...</div>
+          ) : newsItems.length === 0 ? (
+            <div className="no-news">No news available.</div>
+          ) : (
+            <div className="news-list">
+              {newsItems.map((item, idx) => (
+                <NewsCard key={idx} item={item} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default App;
