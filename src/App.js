@@ -1,38 +1,12 @@
-import React, { useState, useEffect, useCallback } from "react";
-import "./App.css";
+// App.js
+import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
-import {
-  Search,
-  TrendingUp,
-  ExternalLink,
-  TrendingDown,
-  CheckCircle,
-  XCircle,
-} from "lucide-react";
+import { TrendingUp, ExternalLink, Search } from "lucide-react";
+import "./App.css";
 
-// Ensure API includes '/api'
-const BACKEND_BASE_URL =
-  process.env.REACT_APP_BACKEND_URL || "https://stock-news-backend-e3h7.onrender.com";
-
+const BACKEND_BASE_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
 const API = BACKEND_BASE_URL.endsWith("/api") ? BACKEND_BASE_URL : `${BACKEND_BASE_URL}/api`;
 
-const SECTORS = [
-  { key: "ALL", label: "ALL" },
-  { key: "RESULTS", label: "RESULTS" },
-  { key: "PENNY", label: "PENNY" },
-  { key: "LARGE CAP", label: "LARGE CAP" },
-  { key: "MIDCAP", label: "MIDCAP" },
-  { key: "SMALLCAP", label: "SMALLCAP" },
-  { key: "FMCG", label: "FMCG" },
-  { key: "IT", label: "IT" },
-  { key: "BANKING", label: "BANKING" },
-  { key: "AUTO", label: "AUTO" },
-  { key: "ENERGY", label: "ENERGY" },
-  { key: "PSU", label: "PSU" },
-  { key: "TELECOM", label: "TELECOM" }
-];
-
-// ---------------------- helpers ----------------------
 function timeAgo(dateStr) {
   if (!dateStr) return "";
   const d = new Date(dateStr);
@@ -44,353 +18,141 @@ function timeAgo(dateStr) {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-function mapSentiment(s) {
-  if (!s) return "neutral";
-  const x = s.toString().toLowerCase();
-  const good = ["good", "positive", "bull", "up", "buy", "green"];
-  const bad = ["bad", "negative", "bear", "down", "sell", "red"];
-  if (good.some((g) => x.includes(g))) return "good";
-  if (bad.some((g) => x.includes(g))) return "bad";
-  return "neutral";
-}
-
-// Auto-summary (Option B) — generates a short 2-3 line summary when API doesn't provide one
-function autoSummary(sourceText, maxWords = 28) {
-  if (!sourceText) return "";
-  const cleaned = sourceText.replace(/\s+/g, " ").trim();
-  const words = cleaned.split(" ");
-  if (words.length <= maxWords) return cleaned;
-  return words.slice(0, maxWords).join(" ") + "...";
-}
-
-// ---------------------- NewsCard ----------------------
 function NewsCard({ item }) {
-  const sentiment = mapSentiment(item.sentiment || item.tag || "");
-  const sector =
-    item.sector ||
-    item.category ||
-    (item.tags && item.tags.length ? item.tags[0] : "") ||
-    "GENERAL";
-
-  // new summary priority: item.summary -> item.description -> item.content -> autoSummary(title)
-  const description =
-    item.summary?.trim() ||
-    item.description?.trim() ||
-    (item.content ? autoSummary(item.content, 30) : "") ||
-    autoSummary(item.title, 22);
-
-  const leftIcon =
-    sentiment === "good" ? (
-      <TrendingUp size={18} />
-    ) : sentiment === "bad" ? (
-      <TrendingDown size={18} />
-    ) : (
-      <TrendingUp size={18} />
-    );
-
+  const desc = item.description || item.summary || item.raw_text || "";
+  const sentiment = (item.sentiment || "").toLowerCase();
   return (
     <div className={`news-card ${sentiment}`}>
-      <div className="news-card-inner">
-        <div className="news-left">
-          <div className={`left-icon ${sentiment}`}>{leftIcon}</div>
-          <div className="micro-tags">
-            <div className="sector-pill">{sector}</div>
-            <div className={`sentiment-badge ${sentiment}`}>
-              {sentiment === "good" ? (
-                <>
-                  <CheckCircle size={14} /> <span>Good News</span>
-                </>
-              ) : sentiment === "bad" ? (
-                <>
-                  <XCircle size={14} /> <span>Bad News</span>
-                </>
-              ) : (
-                <span>Neutral</span>
-              )}
-            </div>
-          </div>
+      <div className="news-left"><TrendingUp size={18} /></div>
+      <div className="news-body">
+        <div className="news-title">{item.title}</div>
+        <div className="meta">
+          <span className="company">{item.company}</span>
+          <span className="pub">{timeAgo(item.pubDate)}</span>
+          <span className={`sent ${sentiment}`}>{sentiment || "neutral"}</span>
         </div>
-
-        <div className="news-body">
-          <div className="news-header">
-            <h3 className="news-title">{item.title}</h3>
-            <div className="meta-right">
-              <span className="news-date">{timeAgo(item.pubDate)}</span>
-            </div>
-          </div>
-
-          {description && <p className="news-description">{description}</p>}
-
-          <div className="news-footer">
-            <div className="footer-left">
-              {item.company && <span className="company-badge-small">{item.company}</span>}
-            </div>
-
-            <div className="footer-right">
-              {item.link && (
-                <a className="read-more" href={item.link} target="_blank" rel="noreferrer">
-                  Read more <ExternalLink size={14} />
-                </a>
-              )}
-            </div>
-          </div>
+        {desc && <div className="desc">{desc}</div>}
+        <div className="actions">
+          {item.link && <a href={item.link} target="_blank" rel="noreferrer">Read <ExternalLink size={12} /></a>}
         </div>
       </div>
     </div>
   );
 }
 
-// ---------------------- App ----------------------
-function App() {
-  const [activeTab, setActiveTab] = useState("ALL");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [suggestions, setSuggestions] = useState([]);
-  const [selectedCompany, setSelectedCompany] = useState(null);
-  const [companyNews, setCompanyNews] = useState([]);
-  // newsCache[tab] = { news: [...], sections: { indexes: [...], largecap: [...], general: [...] } | null }
-  const [newsCache, setNewsCache] = useState({});
+export default function App() {
+  const [indexes, setIndexes] = useState([]);
+  const [largecap, setLargecap] = useState([]);
+  const [general, setGeneral] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
 
-  // search debounce
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchQuery.trim()) searchCompanies(searchQuery);
-      else {
-        setSuggestions([]);
-        setShowSuggestions(false);
-      }
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+  // search / company view
+  const [q, setQ] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [companyNews, setCompanyNews] = useState(null);
 
-  const searchCompanies = async (q) => {
-    try {
-      const res = await axios.get(`${API}/companies/search`, { params: { q } });
-      setSuggestions(res.data || []);
-      setShowSuggestions(true);
-    } catch (err) {
-      console.error("search error", err);
-      setSuggestions([]);
-    }
-  };
-
-  const handleCompanySelect = async (company) => {
-    setSelectedCompany(company);
-    setSearchQuery(company);
-    setShowSuggestions(false);
+  const fetchAllSections = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API}/news/company/${encodeURIComponent(company)}`);
-      const news = res.data.news || [];
-      setCompanyNews(news);
+      const [idxRes, lcRes, genRes] = await Promise.all([
+        axios.get(`${API}/news/indexes`),
+        axios.get(`${API}/news/largecap`),
+        axios.get(`${API}/news/general`),
+      ]);
+      setIndexes(idxRes.data.news || []);
+      setLargecap(lcRes.data.news || []);
+      setGeneral(genRes.data.news || []);
     } catch (err) {
-      console.error("company fetch error", err);
+      console.error("fetch error", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAllSections();
+    // refresh every 2 minutes while the app is open (optional)
+    const id = setInterval(fetchAllSections, 120000);
+    return () => clearInterval(id);
+  }, [fetchAllSections]);
+
+  // search companies (simple)
+  useEffect(() => {
+    if (!q) {
+      setSuggestions([]);
+      return;
+    }
+    const t = setTimeout(async () => {
+      try {
+        const res = await axios.get(`${API}/companies/search`, { params: { q } });
+        setSuggestions(res.data || []);
+      } catch {
+        setSuggestions([]);
+      }
+    }, 260);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  const selectCompany = async (name) => {
+    setQ(name);
+    setSuggestions([]);
+    try {
+      setLoading(true);
+      const res = await axios.get(`${API}/news/company/${encodeURIComponent(name)}`);
+      setCompanyNews(res.data.news || []);
+    } catch (err) {
+      console.error("company fetch err", err);
       setCompanyNews([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // fetchTabNews: if tabKey === "ALL", request grouped sections
-  const fetchTabNews = useCallback(
-    async (tabKey) => {
-      // simple cache guard
-      if (newsCache[tabKey]) return;
-
-      setLoading(true);
-      try {
-        let endpoint = `${API}/news/all`;
-        // for ALL tab, ask backend to include indexes (optional grouped response)
-        if (tabKey === "ALL") {
-          endpoint = `${API}/news/all?include_indexes=true`;
-        } else if (tabKey === "RESULTS") {
-          endpoint = `${API}/news/results`;
-        } else if (tabKey === "PENNY") {
-          endpoint = `${API}/news/sector/penny`;
-        } else if (tabKey === "LARGE CAP") {
-          endpoint = `${API}/news/sector/largecap`;
-        } else if (tabKey !== "ALL") {
-          endpoint = `${API}/news/sector/${tabKey.toLowerCase()}`;
-        }
-
-        const res = await axios.get(endpoint);
-        // if backend returned sections, keep both structure and flat news
-        if (res.data && res.data.sections) {
-          const sections = res.data.sections;
-          // flatten in desired order: indexes -> largecap -> general
-          const flat = [
-            ...(sections.indexes || []),
-            ...(sections.largecap || []),
-            ...(sections.general || []),
-          ];
-          setNewsCache((prev) => ({ ...prev, [tabKey]: { news: flat, sections } }));
-        } else {
-          const items = res.data.news || [];
-          setNewsCache((prev) => ({ ...prev, [tabKey]: { news: items, sections: null } }));
-        }
-      } catch (err) {
-        console.error("fetch tab error", err);
-        setNewsCache((prev) => ({ ...prev, [tabKey]: { news: [], sections: null } }));
-      } finally {
-        setLoading(false);
-      }
-    },
-    [newsCache]
-  );
-
-  useEffect(() => {
-    if (!selectedCompany) fetchTabNews(activeTab);
-  }, [activeTab, selectedCompany, fetchTabNews]);
-
-  const refreshActiveTab = async () => {
-    setLoading(true);
-    try {
-      let endpoint = `${API}/news/all`;
-      if (activeTab === "ALL") endpoint = `${API}/news/all?include_indexes=true`;
-      else if (activeTab === "RESULTS") endpoint = `${API}/news/results`;
-      else if (activeTab === "PENNY") endpoint = `${API}/news/sector/penny`;
-      else if (activeTab === "LARGE CAP") endpoint = `${API}/news/sector/largecap`;
-      else if (activeTab !== "ALL") endpoint = `${API}/news/sector/${activeTab.toLowerCase()}`;
-
-      const res = await axios.get(endpoint);
-      if (res.data && res.data.sections) {
-        const sections = res.data.sections;
-        const flat = [
-          ...(sections.indexes || []),
-          ...(sections.largecap || []),
-          ...(sections.general || []),
-        ];
-        setNewsCache((prev) => ({ ...prev, [activeTab]: { news: flat, sections } }));
-      } else {
-        const items = res.data.news || [];
-        setNewsCache((prev) => ({ ...prev, [activeTab]: { news: items, sections: null } }));
-      }
-    } catch (err) {
-      console.error("refresh error", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const clearSearch = () => {
-    setSearchQuery("");
-    setSelectedCompany(null);
-    setCompanyNews([]);
-    setSuggestions([]);
-    setShowSuggestions(false);
-  };
-
-  // current items to display; also detect sections for grouped rendering
-  const cacheForActive = newsCache[activeTab] || { news: [], sections: null };
-  const newsItems = selectedCompany ? companyNews : (cacheForActive.news || []);
-  const sections = selectedCompany ? null : cacheForActive.sections;
-
-  // Section renderer — small styled header
-  function SectionHeader({ title }) {
-    return <h2 style={{ margin: "12px 0 8px", fontSize: "1rem", color: "#1b5e20", fontWeight: 800 }}>{title}</h2>;
-  }
-
   return (
-    <div className="app-container">
-      <div className="app-wrapper">
-        <header className="header">
-          <div className="logo-section">
-            <TrendingUp className="logo-icon" size={32} />
-            <h1 className="logo-text">Indian Stock Market News</h1>
-          </div>
-          <p className="subtitle">Real-time · Impact-first · Fast</p>
-        </header>
-
-        <div className="search-section">
-          <div className="search-container">
-            <Search className="search-icon" size={20} />
-
-            <input
-              className="search-input"
-              placeholder="Search for a company..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => searchQuery && setShowSuggestions(true)}
-            />
-
-            {searchQuery && (
-              <button className="clear-btn" onClick={clearSearch}>
-                ×
-              </button>
-            )}
-          </div>
-
-          {showSuggestions && suggestions.length > 0 && (
-            <div className="suggestions-dropdown">
-              {suggestions.map((c, i) => (
-                <div key={i} className="suggestion-item" onClick={() => handleCompanySelect(c)}>
-                  {c}
-                </div>
-              ))}
+    <div className="app">
+      <header className="header">
+        <div className="brand"><TrendingUp size={28} /> <h1>Indian Stock News</h1></div>
+        <div className="search">
+          <Search size={14} />
+          <input value={q} onChange={(e) => { setQ(e.target.value); setCompanyNews(null); }} placeholder="Search company (e.g., Reliance Industries Limited)" />
+          {suggestions.length > 0 && (
+            <div className="suggestions">
+              {suggestions.slice(0,6).map((s, i) => <div key={i} onClick={() => selectCompany(s)}>{s}</div>)}
             </div>
           )}
         </div>
-
-        {!selectedCompany && (
-          <div className="tabs-container">
-            <div className="tabs-scroll">
-              {SECTORS.map((tab) => (
-                <button key={tab.key} className={`tab ${activeTab === tab.key ? "active" : ""}`} onClick={() => setActiveTab(tab.key)}>
-                  {tab.label}
-                </button>
-              ))}
-              <button className="tab refresh-tab" onClick={refreshActiveTab}>Refresh</button>
-            </div>
-          </div>
-        )}
-
-        <div className="content-section">
-          {loading ? (
-            <div className="loading">Loading...</div>
-          ) : (selectedCompany ? (companyNews.length === 0 ? (<div className="no-news">No news available.</div>) : (
-              <div className="news-list">{companyNews.map((item, idx) => <NewsCard key={idx} item={item} />)}</div>
-            )) : (
-            // Not selected company — show grouped sections if present, else flat news-list
-            sections ? (
-              <div className="news-list">
-                {/* Indexes (Nifty / Sensex / BankNifty) */}
-                {sections.indexes && sections.indexes.length > 0 && (
-                  <>
-                    <SectionHeader title="Index & Market-wide News" />
-                    {sections.indexes.map((item, idx) => <NewsCard key={`idx-${idx}`} item={item} />)}
-                  </>
-                )}
-
-                {/* Large / Famous stocks */}
-                {sections.largecap && sections.largecap.length > 0 && (
-                  <>
-                    <SectionHeader title="Large-cap / Famous Stock News" />
-                    {sections.largecap.map((item, idx) => <NewsCard key={`lc-${idx}`} item={item} />)}
-                  </>
-                )}
-
-                {/* General India market news */}
-                {sections.general && sections.general.length > 0 && (
-                  <>
-                    <SectionHeader title="General Indian Stock Market News" />
-                    {sections.general.map((item, idx) => <NewsCard key={`gen-${idx}`} item={item} />)}
-                  </>
-                )}
-              </div>
-            ) : (
-              // fallback to flat list
-              newsItems.length === 0 ? (<div className="no-news">No news available.</div>) : (
-                <div className="news-list">
-                  {newsItems.map((item, idx) => <NewsCard key={idx} item={item} />)}
-                </div>
-              )
-            )
-          ))}
+        <div className="refresh">
+          <button onClick={fetchAllSections}>Refresh</button>
         </div>
-      </div>
+      </header>
+
+      <main className="content">
+        {loading && <div className="loading">Loading...</div>}
+
+        {companyNews ? (
+          <section>
+            <h2>News for: {q}</h2>
+            {companyNews.length === 0 ? <div>No news</div> : companyNews.map((n,i) => <NewsCard key={i} item={n} />)}
+          </section>
+        ) : (
+          <>
+            <section>
+              <h2>Index & Market-wide (Nifty / Sensex / BankNifty)</h2>
+              {indexes.length === 0 ? <div>No index news yet</div> : indexes.map((n,i) => <NewsCard key={`idx-${i}`} item={n} />)}
+            </section>
+
+            <section>
+              <h2>Large-cap / Famous Stocks</h2>
+              {largecap.length === 0 ? <div>No largecap news yet</div> : largecap.map((n,i) => <NewsCard key={`lc-${i}`} item={n} />)}
+            </section>
+
+            <section>
+              <h2>General Indian Market News</h2>
+              {general.length === 0 ? <div>No general news yet</div> : general.map((n,i) => <NewsCard key={`g-${i}`} item={n} />)}
+            </section>
+          </>
+        )}
+      </main>
     </div>
   );
 }
-
-export default App;
