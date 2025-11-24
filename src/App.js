@@ -97,7 +97,8 @@ function App() {
   let endpoint = `${API}/news/all`;
 
 
-      if (tabKey === "RESULTS") endpoint = `${API}/news/results?days=7`;
+     if (tabKey === "RESULTS") endpoint = `${API}/news/results`;
+
       else if (tabKey === "PENNY") endpoint = `${API}/news/sector/penny`;
       else if (tabKey === "LARGE CAP") endpoint = `${API}/news/sector/largecap`;
       else if (tabKey !== "ALL") endpoint = `${API}/news/sector/${tabKey.toLowerCase()}`;
@@ -123,7 +124,8 @@ function App() {
      let endpoint = `${API}/news/all`;
 
 
-      if (activeTab === "RESULTS") endpoint = `${API}/news/results?days=7`;
+     if (activeTab === "RESULTS") endpoint = `${API}/news/results`;
+
       else if (activeTab === "PENNY") endpoint = `${API}/news/sector/penny`;
       else if (activeTab === "LARGE CAP") endpoint = `${API}/news/sector/largecap`;
       else if (activeTab !== "ALL") endpoint = `${API}/news/sector/${activeTab.toLowerCase()}`;
