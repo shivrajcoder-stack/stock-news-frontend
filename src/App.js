@@ -238,7 +238,7 @@ function App() {
                       </a>
                     )}
                   </div>
-                </div>
+                </div> 
               ))}
             </div>
           )}
