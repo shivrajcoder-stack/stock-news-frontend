@@ -182,7 +182,7 @@ function App() {
     try {
       const res = await axios.get(
         `${API}/news/company/${encodeURIComponent(company)}`
-      ),
+      );
       setCompanyNews(res.data.news || []);
     } catch (err) {
       console.error("company fetch error", err);
