@@ -32,7 +32,7 @@ const SECTORS = [
   { key: "AUTO", label: "AUTO" },
   { key: "ENERGY", label: "ENERGY" },
   { key: "PSU", label: "PSU" },
-  { key: "TELECOM", label: "TELECOM" },
+  { key: "TELECOM", label: "TELECOM" }
 ];
 
 function timeAgo(dateStr) {
