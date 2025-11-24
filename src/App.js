@@ -94,7 +94,8 @@ function App() {
 
     setLoading(true);
     try {
-      let endpoint = `${API}/news/all?days=7&only_impact=true`;
+  let endpoint = `${API}/news/all`;
+
 
       if (tabKey === "RESULTS") endpoint = `${API}/news/results?days=7`;
       else if (tabKey === "PENNY") endpoint = `${API}/news/sector/penny`;
@@ -119,7 +120,8 @@ function App() {
     setLoading(true);
 
     try {
-      let endpoint = `${API}/news/all?days=7&only_impact=true`;
+     let endpoint = `${API}/news/all`;
+
 
       if (activeTab === "RESULTS") endpoint = `${API}/news/results?days=7`;
       else if (activeTab === "PENNY") endpoint = `${API}/news/sector/penny`;
