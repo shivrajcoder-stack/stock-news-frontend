@@ -88,6 +88,7 @@ function NewsCard({ item }) {
 
           <div className="micro-tags">
             <div className="sector-pill">{sector}</div>
+
             <div className={`sentiment-badge ${sentiment}`}>
               {sentiment === "good" ? (
                 <>
